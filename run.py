@@ -9,6 +9,20 @@ from dotenv import load_dotenv
 
 from util import keep_socket_open
 
+from flask import Flask
+
+# Flask app
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!", 200
+
+async def run_flask():
+    """Запускает Flask в фоновом потоке"""
+    loop = asyncio.get_running_loop()
+    server = await loop.run_in_executor(None, app.run, "0.0.0.0", 8080)
+
 async def main():
     # load token env variable for bot
     load_dotenv()
@@ -20,7 +34,7 @@ async def main():
     dp.include_router(fin_router)
 
     # Create socket task
-    socket_task = asyncio.create_task(keep_socket_open())
+    socket_task = asyncio.create_task(run_flask())
 
     # Create bot in separate task
     bot_task = asyncio.create_task(dp.start_polling(bot))
