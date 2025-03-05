@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from routes.finances import fin_router
+from routes.transactions import fin_router
 
 import os
 from dotenv import load_dotenv
