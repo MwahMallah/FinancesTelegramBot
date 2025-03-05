@@ -16,7 +16,12 @@ async def main():
 
     #includes finance router and starts polling    
     dp.include_router(fin_router)
-    await dp.start_polling(bot)
+    # Создаём event loop
+    loop = asyncio.get_running_loop()
+    
+    # Ожидаем запуск бота в отдельной задаче
+    task = loop.create_task(dp.start_polling(bot))
+    await task
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
