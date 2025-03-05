@@ -46,6 +46,16 @@ def process_category_markup():
 
     return builder.as_markup()
 
+def submit_transaction_markup():
+    # Create inline keyboard with additional option
+    builder = InlineKeyboardBuilder()
+    
+    # Original categories from the previous selection
+    builder.button(text="✅ Подтвердить транзакцию", callback_data="confirm_transaction")
+    builder.button(text="❌ Отменить транзакцию", callback_data="decline_transaction")
+
+    return builder.as_markup()
+
 async def remove_chat_buttons(message: Message, 
                               msg_text: str = r"Loading\.\.\.",):
     msg = await message.reply(msg_text,
