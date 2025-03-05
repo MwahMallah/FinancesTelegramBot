@@ -1,5 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+import socket
+import asyncio
 
 # Define categories
 CATEGORIES = [
@@ -63,3 +65,17 @@ async def remove_chat_buttons(message: Message,
             parse_mode="MarkdownV2")
     
     await msg.delete()
+
+async def keep_socket_open():
+    """Function that keeps socket open."""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    host = "0.0.0.0"  # wait on all interfaces
+    port = 8080       # available port
+    
+    server_socket.bind((host, port))
+    server_socket.listen(5)
+    
+    while True:
+        await asyncio.sleep(3600)  # Keep socket open
