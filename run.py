@@ -7,8 +7,6 @@ from routes.transactions import fin_router
 import os
 from dotenv import load_dotenv
 
-from util import keep_socket_open
-
 from flask import Flask
 
 # Flask app
@@ -21,7 +19,7 @@ def home():
 async def run_flask():
     """Запускает Flask в фоновом потоке"""
     loop = asyncio.get_running_loop()
-    server = await loop.run_in_executor(None, app.run, "0.0.0.0", 8080)
+    await loop.run_in_executor(None, app.run, "0.0.0.0", 8080)
 
 async def main():
     # load token env variable for bot

@@ -1,7 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-import socket
-import asyncio
 
 # Define categories
 CATEGORIES = [
