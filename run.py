@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiogram.exceptions import TelegramAPIError
 
-from aiohttp import web
+from aiohttp import web, ClientSession
 from routes.transactions import fin_router
 
 # Настройка логирования
@@ -69,18 +69,23 @@ async def handle_health(request):
     """Обработчик для проверки состояния сервиса"""
     return web.json_response({"status": "ok", "message": "Service is running"})
 
-# Пинг-функция для поддержания активности
-async def ping_self():
-    """Пингует сам себя для поддержания активности"""
-    logger.info("Ping self to keep alive")
-    try:
-        async with bot.session.get(f"{WEBHOOK_URL}/health") as response:
-            if response.status == 200:
-                logger.debug("Ping successful")
-            else:
-                logger.warning(f"Ping failed with status {response.status}")
-    except Exception as e:
-        logger.error(f"Error pinging self: {e}")
+# Задача для поддержания активности
+async def keep_alive():
+    """Задача для предотвращения "засыпания" сервиса на бесплатных планах"""
+    # Создаем отдельную сессию для пинга
+    async with ClientSession() as session:
+        while True:
+            try:
+                logger.info("Ping self to keep alive")
+                async with session.get(f"{WEBHOOK_URL}/health") as response:
+                    if response.status == 200:
+                        logger.info("Ping successful")
+                    else:
+                        logger.warning(f"Ping failed with status {response.status}")
+            except Exception as e:
+                logger.error(f"Error pinging self: {e}")
+            
+            await asyncio.sleep(540)  # Пинг каждые 9 минут (меньше чем 10 минут на Render)
 
 # Настройка вебхука и запуск keep_alive
 async def on_startup(app):
@@ -95,15 +100,11 @@ async def on_startup(app):
         
         # Запускаем задачу для поддержания активности
         app['keep_alive_task'] = asyncio.create_task(keep_alive())
+        logger.info("Задача keep_alive запущена")
     except TelegramAPIError as e:
         logger.error(f"Ошибка установки вебхука: {e}")
-
-# Задача для поддержания активности
-async def keep_alive():
-    """Задача для предотвращения "засыпания" сервиса на бесплатных планах"""
-    while True:
-        await ping_self()
-        await asyncio.sleep(600)  # Пинг каждые 10 минут
+    except Exception as e:
+        logger.error(f"Ошибка при запуске: {e}")
 
 # Отмена вебхука при выключении
 async def on_shutdown(app):
@@ -112,11 +113,12 @@ async def on_shutdown(app):
     try:
         # Остановка задачи keep_alive
         if 'keep_alive_task' in app and not app['keep_alive_task'].done():
+            logger.info("Останавливаем задачу keep_alive")
             app['keep_alive_task'].cancel()
             try:
                 await app['keep_alive_task']
             except asyncio.CancelledError:
-                pass
+                logger.info("Задача keep_alive остановлена")
         
         await bot.delete_webhook()
         logger.info("Вебхук удален")
@@ -124,9 +126,6 @@ async def on_shutdown(app):
         logger.error(f"Ошибка удаления вебхука: {e}")
     except Exception as e:
         logger.error(f"Ошибка при завершении работы: {e}")
-    
-    # Закрываем сессии
-    await bot.session.close()
 
 # Регистрация хуков запуска и остановки
 app.on_startup.append(on_startup)
