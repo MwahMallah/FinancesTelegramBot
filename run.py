@@ -69,7 +69,20 @@ async def handle_health(request):
     """Обработчик для проверки состояния сервиса"""
     return web.json_response({"status": "ok", "message": "Service is running"})
 
-# Настройка вебхука
+# Пинг-функция для поддержания активности
+async def ping_self():
+    """Пингует сам себя для поддержания активности"""
+    logger.info("Ping self to keep alive")
+    try:
+        async with bot.session.get(f"{WEBHOOK_URL}/health") as response:
+            if response.status == 200:
+                logger.debug("Ping successful")
+            else:
+                logger.warning(f"Ping failed with status {response.status}")
+    except Exception as e:
+        logger.error(f"Error pinging self: {e}")
+
+# Настройка вебхука и запуск keep_alive
 async def on_startup(app):
     """Выполняется при запуске приложения"""
     webhook_url = f"{WEBHOOK_URL.rstrip('/')}{WEBHOOK_PATH}"
@@ -79,25 +92,38 @@ async def on_startup(app):
         await bot.delete_webhook()  # Сначала удаляем старый вебхук
         await bot.set_webhook(url=webhook_url)
         logger.info("Вебхук успешно установлен")
+        
+        # Запускаем задачу для поддержания активности
+        app['keep_alive_task'] = asyncio.create_task(keep_alive())
     except TelegramAPIError as e:
         logger.error(f"Ошибка установки вебхука: {e}")
 
-# Запуск ping-задачи для предотвращения "засыпания"
+# Задача для поддержания активности
 async def keep_alive():
     """Задача для предотвращения "засыпания" сервиса на бесплатных планах"""
     while True:
-        logger.debug("Поддержание активности сервиса...")
-        await asyncio.sleep(300)  # Пинг каждые 5 минут
+        await ping_self()
+        await asyncio.sleep(600)  # Пинг каждые 10 минут
 
 # Отмена вебхука при выключении
 async def on_shutdown(app):
     """Выполняется при остановке приложения"""
     logger.info("Удаляем вебхук")
     try:
+        # Остановка задачи keep_alive
+        if 'keep_alive_task' in app and not app['keep_alive_task'].done():
+            app['keep_alive_task'].cancel()
+            try:
+                await app['keep_alive_task']
+            except asyncio.CancelledError:
+                pass
+        
         await bot.delete_webhook()
         logger.info("Вебхук удален")
     except TelegramAPIError as e:
         logger.error(f"Ошибка удаления вебхука: {e}")
+    except Exception as e:
+        logger.error(f"Ошибка при завершении работы: {e}")
     
     # Закрываем сессии
     await bot.session.close()
@@ -123,9 +149,6 @@ webhook_handler.register(app, path=WEBHOOK_PATH)
 setup_application(app, dp, bot=bot)
 
 if __name__ == '__main__':
-    # Запуск задачи для поддержания активности
-    asyncio.ensure_future(keep_alive())
-    
     logger.info(f"Запуск приложения на порту {PORT}")
     logger.info(f"Webhook URL: {WEBHOOK_URL}")
     
