@@ -129,7 +129,7 @@ async def on_shutdown(app):
 
 # Регистрация хуков запуска и остановки
 app.on_startup.append(on_startup)
-# app.on_shutdown.append(on_shutdown)
+app.on_shutdown.append(on_shutdown)
 
 # Настройка обработчика вебхуков
 webhook_handler = SimpleRequestHandler(
@@ -152,4 +152,4 @@ if __name__ == '__main__':
     logger.info(f"Webhook URL: {WEBHOOK_URL}")
     
     # Запуск веб-сервера
-    web.run_app(app, port=PORT)
+    web.run_app(app, host="0.0.0.0", port=PORT)
