@@ -129,7 +129,7 @@ async def on_shutdown(app):
 
 # Регистрация хуков запуска и остановки
 app.on_startup.append(on_startup)
-app.on_shutdown.append(on_shutdown)
+# app.on_shutdown.append(on_shutdown)
 
 # Настройка обработчика вебхуков
 webhook_handler = SimpleRequestHandler(
